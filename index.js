@@ -10,6 +10,12 @@ async function run_action()
         const prefix = core.getInput('prefix');
         const region = process.env.AWS_DEFAULT_REGION;
         const decryption = core.getInput('decryption') === 'true';
+        const mask = core.getInput('mask') === 'true';
+
+        if (ssmPath === "")
+            {
+                return
+            }
 
         paramValue = await ssm.getParameter(ssmPath, decryption, region);
         parsedValue = parseValue(paramValue);
@@ -19,7 +25,7 @@ async function run_action()
             // Assume basic JSON structure
             for (var key in parsedValue)
             {
-                setEnvironmentVar(prefix + key, parsedValue[key])
+                setEnvironmentVar(prefix + key, parsedValue[key], mask)
             }
         }
         else
@@ -29,7 +35,7 @@ async function run_action()
             var split = ssmPath.split('/');
             var envVarName = prefix + split[split.length - 1];
             core.debug(`Using prefix + end of ssmPath for env var name: ${envVarName}`);
-            setEnvironmentVar(envVarName, parsedValue);
+            setEnvironmentVar(envVarName, parsedValue, mask);
         }
     }
     catch (e)
@@ -52,8 +58,12 @@ function parseValue(val)
     }
 }
 
-function setEnvironmentVar(key, value)
+function setEnvironmentVar(key, value, mask)
 {
+    if (mask){
+        cmdStringMask = `echo "::add-mask::${value}" `
+        execSync(cmdStringMask, {stdio: 'inherit'});
+    }
     cmdString = `echo "${key}=${value}" >> $GITHUB_ENV`;
     core.debug(`Running cmd: ${cmdString}`);
     execSync(cmdString, {stdio: 'inherit'});

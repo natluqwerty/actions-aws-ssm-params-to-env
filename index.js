@@ -10,7 +10,6 @@ async function run_action()
         const prefix = core.getInput('prefix');
         const region = process.env.AWS_DEFAULT_REGION;
         const decryption = core.getInput('decryption') === 'true';
-        const mask = core.getInput('mask') === 'true';
 
         if (ssmPath === "")
             {
@@ -25,7 +24,8 @@ async function run_action()
             // Assume basic JSON structure
             for (var key in parsedValue)
             {
-                setEnvironmentVar(prefix + key, parsedValue[key], mask)
+
+                setEnvironmentVar(prefix + key, parsedValue[key], ifNeedMask(key))
             }
         }
         else
@@ -35,7 +35,7 @@ async function run_action()
             var split = ssmPath.split('/');
             var envVarName = prefix + split[split.length - 1];
             core.debug(`Using prefix + end of ssmPath for env var name: ${envVarName}`);
-            setEnvironmentVar(envVarName, parsedValue, mask);
+            setEnvironmentVar(envVarName, parsedValue, ifNeedMask(envVarName));
         }
     }
     catch (e)
@@ -44,6 +44,14 @@ async function run_action()
     }
 }
 
+function ifNeedMask(val){
+
+    myArray = val.split('_').toLowerCase()
+    if (myArray.slice(-1) == "secret" || myArray.slice(-1) == 'token'){
+        return true
+    }
+    return false
+}
 
 function parseValue(val)
 {
